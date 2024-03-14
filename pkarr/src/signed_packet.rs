@@ -39,7 +39,7 @@ struct InnerParsed<'a> {
 impl Inner {
     fn try_from_bytes(bytes: Bytes, verify_signature: bool) -> Result<Self> {
         if bytes.len() < 104 {
-            return Err(Error::InvalidSingedPacketBytes(bytes.len()));
+            return Err(Error::InvalidSignedPacketBytesLength(bytes.len()));
         }
         if bytes.len() > 1104 {
             return Err(Error::PacketTooLarge(bytes.len()));
@@ -60,7 +60,7 @@ impl Inner {
 
     fn try_from_response(public_key: PublicKey, response: Bytes) -> Result<Self> {
         if response.len() < 72 {
-            return Err(Error::InvalidSingedPacketBytes(response.len()));
+            return Err(Error::InvalidRelayPayloadSize(response.len()));
         }
         if response.len() > 1072 {
             return Err(Error::PacketTooLarge(response.len()));
@@ -124,32 +124,19 @@ pub struct SignedPacket {
 }
 
 impl SignedPacket {
-    /// Creates a new [SignedPacket] from a [PublicKey] and the 64 bytes Signature
-    /// concatenated with 8 bytes timestamp and encoded [Packet] as defined in the [relays](https://github.com/Nuhvi/pkarr/blob/main/design/relays.md) spec.
-    pub fn from_relay_response(public_key: PublicKey, response: Bytes) -> Result<SignedPacket> {
-        let inner = Inner::try_from_response(public_key, response)?;
-
-        Ok(SignedPacket { inner })
-    }
-
-    /// Creates a new [SignedPacket] from a 32 bytes PublicKey concatened with the 64 bytes Signature
-    /// concatenated with 8 bytes timestamp and encoded [Packet] as defined in the [relays](https://github.com/Nuhvi/pkarr/blob/main/design/relays.md) spec.
+    /// Creates a [SignedPacket] from a 32 bytes PublicKey concatenated with
+    /// the 64 bytes Signature, 8 bytes big-endian timestamp, and serialized DNS packet.
     pub fn from_bytes(bytes: Bytes, verify_signature: bool) -> Result<SignedPacket> {
         let inner = Inner::try_from_bytes(bytes, verify_signature)?;
 
         Ok(SignedPacket { inner })
     }
 
-    /// Returns the 32 bytes PublicKey concatened with the 64 bytes Signature
-    /// concatenated with 8 bytes timestamp and encoded [Packet].
-    pub fn as_bytes(&self) -> Bytes {
-        self.inner.borrow_owner().clone()
-    }
+    /// Creates a [SignedPacket] from a [PublicKey] and the [relays](https://github.com/Nuhvi/pkarr/blob/main/design/relays.md) payload.
+    pub fn from_relay_payload(public_key: PublicKey, response: Bytes) -> Result<SignedPacket> {
+        let inner = Inner::try_from_response(public_key, response)?;
 
-    /// Returns the 64 bytes Signature concatenated with 8 bytes timestamp and
-    /// encoded [Packet] as defined in the [relays](https://github.com/Nuhvi/pkarr/blob/main/design/relays.md) spec.
-    pub fn as_relay_request(&self) -> Bytes {
-        self.inner.borrow_owner().slice(32..)
+        Ok(SignedPacket { inner })
     }
 
     /// Creates a new [SignedPacket] from a [Keypair] and a DNS [Packet].
@@ -204,6 +191,18 @@ impl SignedPacket {
         })
     }
 
+    /// Returns 32 bytes PublicKey concatenated with the 64 bytes Signature,
+    /// 8 bytes big-endian timestamp, and serialized DNS Packet.
+    pub fn to_bytes(&self) -> Bytes {
+        self.inner.borrow_owner().clone()
+    }
+
+    /// Returns a slice of the serialized [SignedPacket] omitting the leading public_key,
+    /// to be sent as a request/response body to or from [relays](https://github.com/Nuhvi/pkarr/blob/main/design/relays.md).
+    pub fn to_relay_payload(&self) -> Bytes {
+        self.inner.borrow_owner().slice(32..)
+    }
+
     // === Getters ===
 
     /// Returns the [PublicKey] of the signer of this [SignedPacket]
@@ -233,7 +232,7 @@ impl SignedPacket {
 
     // === Public Methods ===
 
-    /// Return whether this {SignedPacket] is more recent than the given one.
+    /// Return whether this [SignedPacket] is more recent than the given one.
     /// If the timestamps are erqual, the one with the largest value is considered more recent.
     /// Usefel for determining which packet contains the latest information from the Dht.
     /// Assumes that both packets have the same [PublicKey], you shouldn't compare packets from
@@ -335,6 +334,12 @@ impl AsRef<[u8]> for SignedPacket {
     }
 }
 
+impl Clone for SignedPacket {
+    fn clone(&self) -> Self {
+        Self::from_bytes(self.to_bytes(), false).unwrap()
+    }
+}
+
 impl Display for SignedPacket {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
@@ -388,7 +393,9 @@ fn normalize_name(origin: &str, name: String) -> String {
     if last == origin {
         // Already normalized.
         return name.to_string();
-    } else if last == "@" || last.is_empty() {
+    }
+
+    if last == "@" || last.is_empty() {
         // Shorthand of origin
         return origin.to_string();
     }
@@ -439,9 +446,9 @@ mod tests {
 
         let signed_packet = SignedPacket::from_packet(&keypair, &packet).unwrap();
 
-        assert!(SignedPacket::from_relay_response(
-            signed_packet.public_key().clone(),
-            signed_packet.as_relay_request()
+        assert!(SignedPacket::from_relay_payload(
+            signed_packet.public_key().to_owned(),
+            signed_packet.to_relay_payload()
         )
         .is_ok());
     }
@@ -451,7 +458,7 @@ mod tests {
         let keypair = Keypair::random();
 
         let bytes = Bytes::from(vec![0; 1073]);
-        let error = SignedPacket::from_relay_response(keypair.public_key().clone(), bytes);
+        let error = SignedPacket::from_relay_payload(keypair.public_key().clone(), bytes);
 
         assert!(error.is_err());
     }
@@ -590,15 +597,32 @@ mod tests {
             RData::TXT("hello".try_into().unwrap()),
         ));
         let signed = SignedPacket::from_packet(&keypair, &packet).unwrap();
-        let bytes = signed.as_bytes();
+        let bytes = signed.to_bytes();
         let from_bytes = SignedPacket::from_bytes(bytes.clone(), true).unwrap();
-        assert_eq!(signed.as_bytes(), from_bytes.as_bytes());
+        assert_eq!(signed.to_bytes(), from_bytes.to_bytes());
         let from_bytes2 = SignedPacket::from_bytes(bytes, false).unwrap();
-        assert_eq!(signed.as_bytes(), from_bytes2.as_bytes());
+        assert_eq!(signed.to_bytes(), from_bytes2.to_bytes());
 
         let public_key = keypair.public_key();
-        let response = signed.as_relay_request();
-        let from_relay_response = SignedPacket::from_relay_response(public_key, response).unwrap();
-        assert_eq!(signed.as_bytes(), from_relay_response.as_bytes());
+        let payload = signed.to_relay_payload();
+        let from_relay_payload = SignedPacket::from_relay_payload(public_key, payload).unwrap();
+        assert_eq!(signed.to_bytes(), from_relay_payload.to_bytes());
+    }
+
+    #[test]
+    fn clone() {
+        let keypair = Keypair::random();
+        let mut packet = Packet::new_reply(0);
+        packet.answers.push(dns::ResourceRecord::new(
+            dns::Name::new("_foo").unwrap(),
+            dns::CLASS::IN,
+            30,
+            RData::TXT("hello".try_into().unwrap()),
+        ));
+
+        let signed = SignedPacket::from_packet(&keypair, &packet).unwrap();
+        let cloned = signed.clone();
+
+        assert_eq!(cloned.to_bytes(), signed.to_bytes());
     }
 }

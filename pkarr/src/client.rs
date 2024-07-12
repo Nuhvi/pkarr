@@ -15,7 +15,7 @@ use std::{
     num::NonZeroUsize,
     thread,
 };
-use tracing::{debug, trace};
+use tracing::{debug, instrument, trace};
 
 use crate::{
     cache::{InMemoryPkarrCache, PkarrCache},
@@ -264,6 +264,7 @@ impl PkarrClient {
         Ok(receiver)
     }
 
+    #[instrument(skip(self))]
     pub(crate) fn resolve_inner(&self, public_key: &PublicKey) -> Result<Receiver<SignedPacket>> {
         let target = MutableItem::target_from_key(public_key.as_bytes(), &None);
 
@@ -274,19 +275,22 @@ impl PkarrClient {
         if let Some(ref cached) = cached_packet {
             let expires_in = cached.expires_in(self.minimum_ttl, self.maximum_ttl);
 
+            sender
+                .send(cached.clone())
+                .map_err(|_| Error::DhtIsShutdown)?;
+
             if expires_in > 0 {
                 debug!(expires_in, "Have fresh signed_packet in cache.");
-
-                sender
-                    .send(cached.clone())
-                    .map_err(|_| Error::DhtIsShutdown)?;
 
                 return Ok(receiver);
             }
 
-            debug!(expires_in, "Have expired signed_packet in cache.");
+            debug!(
+                expires_in,
+                "Have expired signed_packet in cache. Making DHT query."
+            );
         } else {
-            debug!("Cache mess");
+            debug!("Cache miss. Making DHT query.");
         }
 
         self.sender
@@ -389,7 +393,7 @@ fn run(
                                     if let Some(ref cached) = cache.get_read_only(target) {
                                         if signed_packet.more_recent_than(cached) {
                                             debug!(
-                                                ?target,
+                                                public_key = ?signed_packet.public_key(),
                                                 "Received more recent packet than in cache"
                                             );
                                             Some(signed_packet)
@@ -397,7 +401,10 @@ fn run(
                                             None
                                         }
                                     } else {
-                                        debug!(?target, "Received new packet after cache miss");
+                                        debug!(
+                                            public_key = ?signed_packet.public_key(),
+                                            "Received new packet after cache miss"
+                                        );
                                         Some(signed_packet)
                                     };
 
@@ -459,6 +466,8 @@ pub enum ActorMessage {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
     use mainline::Testnet;
 
     use super::*;
@@ -579,5 +588,46 @@ mod tests {
         })
         .join()
         .unwrap();
+    }
+
+    #[test]
+    fn return_cached_first() {
+        let testnet = Testnet::new(10);
+
+        let a = PkarrClient::builder()
+            .dht_settings(DhtSettings {
+                bootstrap: Some(testnet.bootstrap.clone()),
+                // Avoid waiting too long for considering a query exhausted
+                request_timeout: Some(Duration::from_millis(1)),
+                server: None,
+                port: None,
+            })
+            // Consider all cached expired
+            .maximum_ttl(0)
+            .build()
+            .unwrap();
+
+        let keypair = Keypair::random();
+
+        let resolved = a.resolve(&keypair.public_key()).unwrap();
+        assert_eq!(resolved, None);
+
+        let mut packet = dns::Packet::new_reply(0);
+        packet.answers.push(dns::ResourceRecord::new(
+            dns::Name::new("foo").unwrap(),
+            dns::CLASS::IN,
+            30,
+            dns::rdata::RData::TXT("bar".try_into().unwrap()),
+        ));
+
+        let signed_packet = SignedPacket::from_packet(&keypair, &packet).unwrap();
+
+        a.cache().put(
+            &MutableItem::target_from_key(signed_packet.public_key().as_bytes(), &None),
+            &signed_packet,
+        );
+
+        let resolved = a.resolve(&keypair.public_key()).unwrap().unwrap();
+        assert_eq!(resolved, signed_packet);
     }
 }

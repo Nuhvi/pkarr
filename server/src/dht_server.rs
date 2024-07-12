@@ -94,7 +94,7 @@ impl Server for DhtServer {
                     ResponseSpecific::GetMutable(GetMutableResponseArguments {
                         responder_id: *rpc.id(),
                         // Token doesn't matter much, as we are most likely _not_ the
-                        // closest nodes, so we shouldn't expect an PUT requests based on
+                        // closest nodes, so we shouldn't expect PUT requests based on
                         // this response.
                         token: vec![0, 0, 0, 0],
                         nodes: None,

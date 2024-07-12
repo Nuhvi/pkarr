@@ -119,6 +119,7 @@ impl PkarrRelayClient {
         let mut last_result = Ok(None);
 
         while let Ok(response) = self.resolve_inner(public_key).recv() {
+            dbg!(&response);
             match response {
                 Ok(Some(signed_packet)) => {
                     self.cache
@@ -128,7 +129,13 @@ impl PkarrRelayClient {
 
                     return Ok(Some(signed_packet));
                 }
-                result => last_result = result,
+                Ok(None) => last_result = Ok(None),
+                Err(Error::RelayError(error)) => {
+                    last_result = Error::RelayError(error);
+                }
+                Err(error) => {
+                    last_result = Err(error);
+                }
             }
         }
 
@@ -307,5 +314,43 @@ mod tests {
         assert_eq!(b.cache().lock().unwrap().len(), 1);
 
         assert_eq!(resolved.as_bytes(), signed_packet.as_bytes());
+    }
+
+    #[test]
+    fn return_cached_first_relay() {
+        let mut server = mockito::Server::new();
+
+        let relays: Vec<String> = vec![server.url()];
+
+        let settings = RelaySettings {
+            relays: vec!["http://localhost:9999".to_string()],
+            maximum_ttl: 0,
+            ..RelaySettings::default()
+        };
+
+        let a = PkarrRelayClient::new(settings).unwrap();
+
+        let keypair = Keypair::random();
+
+        let resolved = a.resolve(&keypair.public_key()).unwrap();
+        assert_eq!(resolved, None);
+        //
+        // let mut packet = dns::Packet::new_reply(0);
+        // packet.answers.push(dns::ResourceRecord::new(
+        //     dns::Name::new("foo").unwrap(),
+        //     dns::CLASS::IN,
+        //     30,
+        //     dns::rdata::RData::TXT("bar".try_into().unwrap()),
+        // ));
+        //
+        // let signed_packet = SignedPacket::from_packet(&keypair, &packet).unwrap();
+        //
+        // // a.cache().put(
+        // //     &MutableItem::target_from_key(signed_packet.public_key().as_bytes(), &None),
+        // //     &signed_packet,
+        // // );
+        //
+        // let resolved = a.resolve(&keypair.public_key()).unwrap().unwrap();
+        // assert_eq!(resolved, signed_packet);
     }
 }

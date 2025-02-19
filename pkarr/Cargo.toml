@@ -49,7 +49,7 @@ mainline = { version = "5.2.1", optional = true }
 # feat: relay dependencies
 reqwest = { version = "0.12.12", default-features = false, features = ["rustls-tls"], optional = true }
 tokio = { version = "1.43.0", default-features = false, optional = true }
-async-compat = { version = "0.2.4", optional = true }
+async-compat = { git = "https://github.com/smol-rs/async-compat", version = "0.2.4", optional = true }
 
 # feat: lmdb-cache defendencies
 heed = { version = "0.21.0", default-features = false, optional = true }

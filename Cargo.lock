@@ -102,6 +102,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-compat"
+version = "0.2.4"
+source = "git+https://github.com/smol-rs/async-compat#5779349d6450fddedd7b3d8455df3b144f8a0583"
+dependencies = [
+ "futures-core",
+ "futures-io",
+ "once_cell",
+ "pin-project-lite",
+ "tokio",
+]
+
+[[package]]
 name = "atomic-polyfill"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1826,7 +1838,7 @@ name = "pkarr"
 version = "3.3.1"
 dependencies = [
  "anyhow",
- "async-compat",
+ "async-compat 0.2.4 (git+https://github.com/smol-rs/async-compat)",
  "axum",
  "axum-server",
  "base32",
@@ -1875,7 +1887,7 @@ version = "3.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fb8be2e97e822e41c6e254706e732e02ca2c49f4da038042c11d5a5e5961a164"
 dependencies = [
- "async-compat",
+ "async-compat 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "base32",
  "byteorder",
  "bytes",

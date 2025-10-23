@@ -16,7 +16,6 @@ use std::{
     net::{SocketAddr, TcpListener},
     path::{Path, PathBuf},
     sync::Arc,
-    time::Duration,
 };
 
 use axum::{extract::DefaultBodyLimit, Router};
@@ -220,8 +219,6 @@ impl Relay {
         config
             .pkarr
             .bootstrap(&testnet.bootstrap)
-            .request_timeout(Duration::from_millis(100))
-            .bootstrap(&testnet.bootstrap)
             .dht(|builder| builder.server_mode());
 
         Ok(unsafe { Self::run(config).await? })
@@ -249,7 +246,6 @@ impl Relay {
 
         config
             .pkarr
-            .request_timeout(Duration::from_millis(100))
             .bootstrap(&testnet.bootstrap)
             .dht(|builder| builder.server_mode());
 

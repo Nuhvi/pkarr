@@ -74,6 +74,7 @@ impl Default for Config {
                     .collect(),
             ),
 
+            #[cfg(feature = "relays")]
             request_timeout: DEFAULT_REQUEST_TIMEOUT,
 
             #[cfg(feature = "endpoints")]
@@ -103,6 +104,7 @@ impl std::fmt::Debug for Config {
                 .map(|urls| urls.iter().map(|url| url.as_str()).collect::<Vec<_>>()),
         );
 
+        #[cfg(feature = "relays")]
         debug_struct.field("request_timeout", &self.request_timeout);
 
         debug_struct.finish()

@@ -133,7 +133,6 @@ mod tests {
     use std::net::IpAddr;
     use std::pin::Pin;
     use std::str::FromStr;
-    use std::time::Duration;
 
     fn generate_subtree(
         client: Client,
@@ -232,7 +231,6 @@ mod tests {
         let client = Client::builder()
             .no_default_network()
             .bootstrap(&testnet.bootstrap)
-            .request_timeout(Duration::from_millis(200))
             .build()
             .unwrap();
 
@@ -252,7 +250,6 @@ mod tests {
         let client = Client::builder()
             .no_default_network()
             .bootstrap(&testnet.bootstrap)
-            .request_timeout(Duration::from_millis(20))
             .build()
             .unwrap();
 
@@ -269,7 +266,6 @@ mod tests {
         let client = Client::builder()
             .no_default_network()
             .bootstrap(&testnet.bootstrap)
-            .request_timeout(Duration::from_millis(100))
             .max_recursion_depth(3)
             .build()
             .unwrap();
@@ -287,7 +283,6 @@ mod tests {
         let client = Client::builder()
             .no_default_network()
             .bootstrap(&testnet.bootstrap)
-            .request_timeout(Duration::from_millis(200))
             .build()
             .unwrap();
 

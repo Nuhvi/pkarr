@@ -27,6 +27,9 @@ pub const DEFAULT_RELAYS: [&str; 2] = ["https://relay.pkarr.org", "https://pkarr
 /// Default cache size: 1000
 pub const DEFAULT_CACHE_SIZE: usize = 1000;
 
+#[cfg(relays)]
+pub use client::builder::DEFAULT_REQUEST_TIMEOUT;
+
 // Exports
 #[cfg(all(client, not(wasm_browser)))]
 pub use client::blocking::ClientBlocking;

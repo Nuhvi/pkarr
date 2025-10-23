@@ -13,6 +13,7 @@ use crate::{Cache, DEFAULT_CACHE_SIZE, DEFAULT_MAXIMUM_TTL, DEFAULT_MINIMUM_TTL}
 #[cfg(feature = "endpoints")]
 pub const DEFAULT_MAX_RECURSION_DEPTH: u8 = 7;
 
+/// Default request timeout for relays requests.
 pub const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(2);
 
 /// [Client]'s Config
@@ -45,6 +46,7 @@ pub(crate) struct Config {
     /// The longer this timeout the longer resolve queries will take before consider failed.
     ///
     /// Defaults to [DEFAULT_REQUEST_TIMEOUT]
+    #[cfg(feature = "relays")]
     pub request_timeout: Duration,
 
     #[cfg(feature = "endpoints")]
@@ -254,10 +256,11 @@ impl ClientBuilder {
         self
     }
 
-    /// Set the maximum request timeout for both Dht and relays client.
+    /// Set the maximum request timeout for relays client.
     ///
     /// Useful for testing NOT FOUND responses, where you want to reach the timeout
-    /// sooner than the default of [mainline::DEFAULT_REQUEST_TIMEOUT].
+    /// sooner than the default of [DEFAULT_REQUEST_TIMEOUT].
+    #[cfg(feature = "relays")]
     pub fn request_timeout(&mut self, timeout: Duration) -> &mut Self {
         self.0.request_timeout = timeout;
 

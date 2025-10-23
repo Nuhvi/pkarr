@@ -5,6 +5,7 @@ use std::{sync::Arc, time::Duration};
 #[cfg(feature = "relays")]
 use url::Url;
 
+#[cfg(dht)]
 use crate::mainline;
 use crate::{errors::BuildError, Client};
 use crate::{Cache, DEFAULT_CACHE_SIZE, DEFAULT_MAXIMUM_TTL, DEFAULT_MINIMUM_TTL};
@@ -12,8 +13,6 @@ use crate::{Cache, DEFAULT_CACHE_SIZE, DEFAULT_MAXIMUM_TTL, DEFAULT_MINIMUM_TTL}
 #[cfg(feature = "endpoints")]
 pub const DEFAULT_MAX_RECURSION_DEPTH: u8 = 7;
 
-pub const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(2);
-#[cfg(not(dht))]
 pub const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(2);
 
 /// [Client]'s Config

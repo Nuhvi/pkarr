@@ -482,7 +482,7 @@ dependencies = [
 [[package]]
 name = "dht"
 version = "6.0.1-rc.2"
-source = "git+https://github.com/Nuhvi/mainline?branch=feat%2Fremove-node-feature#dd34bf429d288c2eccd2edcf5d8b03c06471bdf4"
+source = "git+https://github.com/Nuhvi/mainline#f2ade7df27c758dbda308b04bea55b1d5f5279e9"
 dependencies = [
  "crc",
  "document-features",

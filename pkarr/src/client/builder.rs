@@ -5,15 +5,14 @@ use std::{sync::Arc, time::Duration};
 #[cfg(feature = "relays")]
 use url::Url;
 
-use crate::{Cache, DEFAULT_CACHE_SIZE, DEFAULT_MAXIMUM_TTL, DEFAULT_MINIMUM_TTL};
-
+use crate::mainline;
 use crate::{errors::BuildError, Client};
+use crate::{Cache, DEFAULT_CACHE_SIZE, DEFAULT_MAXIMUM_TTL, DEFAULT_MINIMUM_TTL};
 
 #[cfg(feature = "endpoints")]
 pub const DEFAULT_MAX_RECURSION_DEPTH: u8 = 7;
 
-#[cfg(dht)]
-pub const DEFAULT_REQUEST_TIMEOUT: Duration = mainline::DEFAULT_REQUEST_TIMEOUT;
+pub const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(2);
 #[cfg(not(dht))]
 pub const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(2);
 
@@ -42,7 +41,7 @@ pub(crate) struct Config {
     #[cfg(feature = "relays")]
     pub relays: Option<Vec<Url>>,
 
-    /// Timeout for both Dht and Relays requests.
+    /// Timeout for Relays requests (The Dht uses an adaptive timeout based on observed RTTs).
     ///
     /// The longer this timeout the longer resolve queries will take before consider failed.
     ///
@@ -262,8 +261,6 @@ impl ClientBuilder {
     /// sooner than the default of [mainline::DEFAULT_REQUEST_TIMEOUT].
     pub fn request_timeout(&mut self, timeout: Duration) -> &mut Self {
         self.0.request_timeout = timeout;
-        #[cfg(dht)]
-        self.0.dht.as_mut().map(|b| b.request_timeout(timeout));
 
         self
     }

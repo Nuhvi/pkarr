@@ -44,7 +44,7 @@ getrandom = { version = "0.2.15", default-features = false }
 tracing = { version = "0.1.41", optional = true }
 
 # feat: dht dependencies
-mainline = { version = "5.4.0", optional = true }
+dht = { workspace = true, optional = true }
 
 # feat: relay dependencies
 reqwest = { workspace = true, optional = true }
@@ -80,7 +80,7 @@ rstest = "0.24.0"
 pkarr-relay = { path = "../relay" }
 clap = { version = "4.5.29", features = ["derive"] }
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
-mainline = "5.4.0"
+dht = { workspace = true }
 tokio-rustls = { version = "0.26.1", default-features = false }
 axum = "0.8.1"
 axum-server = { version = "0.7.1", features = ["tls-rustls-no-provider"] }
@@ -101,7 +101,7 @@ signed_packet = ["keys", "dep:simple-dns", "dep:ntimestamp", "dep:bytes", 'dep:s
 
 # Clients 
 ## Enable the [Client] with [mainline] support.
-dht = ["dep:mainline", "__client"]
+dht = ["dep:dht", "__client"]
 ## Enables [Client] with [Relays](https://pkarr.org/relays).
 relays = ["dep:url", "dep:reqwest", "dep:futures-buffered", "__client"]
 
@@ -127,7 +127,7 @@ reqwest-builder = ["tls", "reqwest-resolve"]
 
 # Combinations
 ## Use all features
-full-client = ["dht", "relays"]
+full-client = [ "relays"]
 ## Extra features that might benefit most but not all developers building apps using Pkarr.
 ##
 ## Only available if the `client` module is enabled.

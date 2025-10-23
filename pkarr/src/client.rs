@@ -34,7 +34,7 @@ use std::sync::Arc;
 use std::{hash::Hash, num::NonZeroUsize};
 
 #[cfg(dht)]
-use mainline::{errors::PutMutableError, Dht};
+use crate::mainline::{self, errors::PutMutableError, Dht};
 
 use builder::{ClientBuilder, Config};
 

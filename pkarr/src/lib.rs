@@ -41,7 +41,7 @@ pub use signed_packet::{SignedPacket, SignedPacketBuilder};
 
 // Rexports
 #[cfg(dht)]
-pub use mainline;
+pub use dht as mainline;
 #[cfg(feature = "signed_packet")]
 pub use ntimestamp::Timestamp;
 #[cfg(feature = "signed_packet")]

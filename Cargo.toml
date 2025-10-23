@@ -12,3 +12,5 @@ name = "pkarr"
 [workspace.dependencies]
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
+
+dht = { git = "https://github.com/Nuhvi/mainline", branch = "feat/remove-node-feature", version = "6.0.1-rc.2" }

@@ -586,7 +586,7 @@ fn normalize_name(origin: &str, name: String) -> String {
 }
 
 #[cfg(dht)]
-use mainline::MutableItem;
+use crate::mainline::MutableItem;
 
 use super::keys::PublicKeyError;
 

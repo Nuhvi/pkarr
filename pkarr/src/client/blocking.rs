@@ -1,5 +1,6 @@
 use ntimestamp::Timestamp;
 
+use crate::mainline;
 use crate::{Cache, PublicKey, SignedPacket};
 
 use super::{Client, PublishError};

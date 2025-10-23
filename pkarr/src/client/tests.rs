@@ -8,6 +8,7 @@ use rstest::rstest;
 use simple_dns::rdata::SVCB;
 
 use crate::errors::{BuildError, ConcurrencyError, PublishError};
+use crate::mainline;
 use crate::{Client, ClientBuilder, Keypair, SignedPacket};
 
 #[derive(Copy, Clone)]

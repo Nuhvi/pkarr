@@ -898,7 +898,7 @@ mod tests {
         let seq = signed_packet.timestamp().as_u64() as i64;
 
         let expected = MutableItem::new(
-            keypair.secret_key().into(),
+            &keypair.secret_key().into(),
             &signed_packet.packet().build_bytes_vec_compressed().unwrap(),
             seq,
             None,

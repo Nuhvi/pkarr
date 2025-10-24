@@ -482,7 +482,7 @@ dependencies = [
 [[package]]
 name = "dht"
 version = "6.0.1-rc.2"
-source = "git+https://github.com/Nuhvi/mainline#f2ade7df27c758dbda308b04bea55b1d5f5279e9"
+source = "git+https://github.com/Nuhvi/mainline#a045b176e0c5cc7d05eca559f2f7159bc974b694"
 dependencies = [
  "crc",
  "document-features",

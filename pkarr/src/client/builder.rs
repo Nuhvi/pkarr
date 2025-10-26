@@ -1,5 +1,3 @@
-#[cfg(dht)]
-use std::net::ToSocketAddrs;
 use std::{sync::Arc, time::Duration};
 
 #[cfg(feature = "relays")]
@@ -163,7 +161,7 @@ impl ClientBuilder {
     /// If you want to extend [bootstrap][mainline::DhtBuilder::bootstrap] nodes with more nodes, you can
     /// use [Self::extra_bootstrap].
     #[cfg(dht)]
-    pub fn bootstrap<T: ToSocketAddrs>(&mut self, bootstrap: &[T]) -> &mut Self {
+    pub fn bootstrap<T: ToString>(&mut self, bootstrap: &[T]) -> &mut Self {
         self.dht(|b| b.bootstrap(bootstrap));
 
         self
@@ -174,7 +172,7 @@ impl ClientBuilder {
     ///
     /// If you want to set (override) the DHT bootstrapping nodes,
     /// use [Self::bootstrap] directly.
-    pub fn extra_bootstrap<T: ToSocketAddrs>(&mut self, bootstrap: &[T]) -> &mut Self {
+    pub fn extra_bootstrap<T: ToString>(&mut self, bootstrap: &[T]) -> &mut Self {
         self.dht(|b| b.extra_bootstrap(bootstrap));
 
         self

@@ -23,9 +23,12 @@ pub const DEFAULT_MINIMUM_TTL: u32 = 300;
 pub const DEFAULT_MAXIMUM_TTL: u32 = 24 * 60 * 60;
 /// Default [Relays](https://pkarr.org/relays).
 pub const DEFAULT_RELAYS: [&str; 2] = ["https://relay.pkarr.org", "https://pkarr.pubky.org"];
-#[cfg(feature = "__client")]
+#[cfg(client)]
 /// Default cache size: 1000
 pub const DEFAULT_CACHE_SIZE: usize = 1000;
+
+#[cfg(relays)]
+pub use client::builder::DEFAULT_REQUEST_TIMEOUT;
 
 // Exports
 #[cfg(all(client, not(wasm_browser)))]
@@ -41,7 +44,7 @@ pub use signed_packet::{SignedPacket, SignedPacketBuilder};
 
 // Rexports
 #[cfg(dht)]
-pub use mainline;
+pub use dht as mainline;
 #[cfg(feature = "signed_packet")]
 pub use ntimestamp::Timestamp;
 #[cfg(feature = "signed_packet")]

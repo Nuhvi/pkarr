@@ -20,7 +20,7 @@ impl Keypair {
     pub fn random() -> Keypair {
         let mut bytes = [0u8; 32];
 
-        getrandom::getrandom(&mut bytes).expect("getrandom failed");
+        getrandom::fill(&mut bytes).expect("getrandom failed");
 
         let signing_key: SigningKey = SigningKey::from_bytes(&bytes);
 
@@ -239,7 +239,7 @@ impl TryFrom<&String> for PublicKey {
     type Error = PublicKeyError;
 
     fn try_from(s: &String) -> Result<PublicKey, PublicKeyError> {
-        s.try_into()
+        s.as_str().try_into()
     }
 }
 

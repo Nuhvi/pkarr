@@ -1,20 +1,21 @@
-#[cfg(dht)]
-use std::net::ToSocketAddrs;
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
+
+#[cfg(relays)]
+use std::time::Duration;
 
 #[cfg(feature = "relays")]
 use url::Url;
 
-use crate::{Cache, DEFAULT_CACHE_SIZE, DEFAULT_MAXIMUM_TTL, DEFAULT_MINIMUM_TTL};
-
+#[cfg(dht)]
+use crate::mainline;
 use crate::{errors::BuildError, Client};
+use crate::{Cache, DEFAULT_CACHE_SIZE, DEFAULT_MAXIMUM_TTL, DEFAULT_MINIMUM_TTL};
 
 #[cfg(feature = "endpoints")]
 pub const DEFAULT_MAX_RECURSION_DEPTH: u8 = 7;
 
-#[cfg(dht)]
-pub const DEFAULT_REQUEST_TIMEOUT: Duration = mainline::DEFAULT_REQUEST_TIMEOUT;
-#[cfg(not(dht))]
+/// Default request timeout for relays requests.
+#[cfg(relays)]
 pub const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(2);
 
 /// [Client]'s Config
@@ -42,11 +43,12 @@ pub(crate) struct Config {
     #[cfg(feature = "relays")]
     pub relays: Option<Vec<Url>>,
 
-    /// Timeout for both Dht and Relays requests.
+    /// Timeout for Relays requests (The Dht uses an adaptive timeout based on observed RTTs).
     ///
     /// The longer this timeout the longer resolve queries will take before consider failed.
     ///
     /// Defaults to [DEFAULT_REQUEST_TIMEOUT]
+    #[cfg(feature = "relays")]
     pub request_timeout: Duration,
 
     #[cfg(feature = "endpoints")]
@@ -74,6 +76,7 @@ impl Default for Config {
                     .collect(),
             ),
 
+            #[cfg(relays)]
             request_timeout: DEFAULT_REQUEST_TIMEOUT,
 
             #[cfg(feature = "endpoints")]
@@ -103,6 +106,7 @@ impl std::fmt::Debug for Config {
                 .map(|urls| urls.iter().map(|url| url.as_str()).collect::<Vec<_>>()),
         );
 
+        #[cfg(feature = "relays")]
         debug_struct.field("request_timeout", &self.request_timeout);
 
         debug_struct.finish()
@@ -161,7 +165,7 @@ impl ClientBuilder {
     /// If you want to extend [bootstrap][mainline::DhtBuilder::bootstrap] nodes with more nodes, you can
     /// use [Self::extra_bootstrap].
     #[cfg(dht)]
-    pub fn bootstrap<T: ToSocketAddrs>(&mut self, bootstrap: &[T]) -> &mut Self {
+    pub fn bootstrap<T: ToString>(&mut self, bootstrap: &[T]) -> &mut Self {
         self.dht(|b| b.bootstrap(bootstrap));
 
         self
@@ -172,7 +176,7 @@ impl ClientBuilder {
     ///
     /// If you want to set (override) the DHT bootstrapping nodes,
     /// use [Self::bootstrap] directly.
-    pub fn extra_bootstrap<T: ToSocketAddrs>(&mut self, bootstrap: &[T]) -> &mut Self {
+    pub fn extra_bootstrap<T: ToString>(&mut self, bootstrap: &[T]) -> &mut Self {
         self.dht(|b| b.extra_bootstrap(bootstrap));
 
         self
@@ -256,14 +260,13 @@ impl ClientBuilder {
         self
     }
 
-    /// Set the maximum request timeout for both Dht and relays client.
+    /// Set the maximum request timeout for relays client.
     ///
     /// Useful for testing NOT FOUND responses, where you want to reach the timeout
-    /// sooner than the default of [mainline::DEFAULT_REQUEST_TIMEOUT].
+    /// sooner than the default of [DEFAULT_REQUEST_TIMEOUT].
+    #[cfg(feature = "relays")]
     pub fn request_timeout(&mut self, timeout: Duration) -> &mut Self {
         self.0.request_timeout = timeout;
-        #[cfg(dht)]
-        self.0.dht.as_mut().map(|b| b.request_timeout(timeout));
 
         self
     }

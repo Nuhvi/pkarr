@@ -2,7 +2,7 @@
 
 All notable changes to pkarr will be documented in this file.
 
-## [Unreleased]
+## [4.0.0](https://github.com/Nuhvi/pkarr/releases/tag/pkarr-client-v4.0.0)
 
 ### Changed
 

@@ -14,7 +14,7 @@ pub mod cache;
 #[cfg(not(wasm_browser))]
 pub mod blocking;
 pub mod builder;
-#[cfg(not(wasm_browser))]
+#[cfg(all(dht, relays))]
 mod futures;
 #[cfg(relays)]
 mod relays;
@@ -24,8 +24,8 @@ mod tests;
 #[cfg(all(test, wasm_browser))]
 mod tests_web;
 
-#[cfg(not(wasm_browser))]
-use futures::publish_both_networks;
+#[cfg(all(dht, relays))]
+use futures::{publish_both_networks, select_stream};
 use futures_lite::{Stream, StreamExt};
 use ntimestamp::Timestamp;
 use std::future::Future;
@@ -459,8 +459,6 @@ impl Client {
         public_key: &PublicKey,
         more_recent_than: Option<Timestamp>,
     ) -> Pin<Box<dyn Stream<Item = SignedPacket> + Send>> {
-        use futures::select_stream;
-
         #[cfg(dht)]
         let dht_stream = match self.dht() {
             Some(node) => map_dht_stream(node.as_async().get_mutable(

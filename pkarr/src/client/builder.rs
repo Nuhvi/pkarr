@@ -1,4 +1,7 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
+
+#[cfg(relays)]
+use std::time::Duration;
 
 #[cfg(feature = "relays")]
 use url::Url;
@@ -12,6 +15,7 @@ use crate::{Cache, DEFAULT_CACHE_SIZE, DEFAULT_MAXIMUM_TTL, DEFAULT_MINIMUM_TTL}
 pub const DEFAULT_MAX_RECURSION_DEPTH: u8 = 7;
 
 /// Default request timeout for relays requests.
+#[cfg(relays)]
 pub const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(2);
 
 /// [Client]'s Config
@@ -72,7 +76,7 @@ impl Default for Config {
                     .collect(),
             ),
 
-            #[cfg(feature = "relays")]
+            #[cfg(relays)]
             request_timeout: DEFAULT_REQUEST_TIMEOUT,
 
             #[cfg(feature = "endpoints")]

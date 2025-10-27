@@ -2,6 +2,20 @@
 
 All notable changes to pkarr will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- Upgrade to [dht v6.0.0](https://github.com/Nuhvi/mainline/blob/main/CHANGELOG.md#600---2025-10-27)
+- Upgrade `ed25519-dalek` to `v3.0.0-pre.1`
+- Upgrade `getrandom` to `v0.3`
+- `Client::Builderrequest_timeout()` only applies to relays requests, `dht` crate calculates its own internally.
+- `ClientBuilder::bootstrap()` and `ClientBuilder::extra_bootstrap()` takes a ToString.
+
+### Fix
+
+- Fix `ClientBuilder::extra_bootstrap()` by updating `dht` crate with the fix.
+
 ## [3.5.0](https://github.com/nuhvi/pkarr/compare/v2.0.0...pkarr-v3.5.0) - 2025-02-21
 
 ### Added

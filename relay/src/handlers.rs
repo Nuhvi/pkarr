@@ -8,11 +8,12 @@ use axum::{extract::State, response::IntoResponse};
 use bytes::Bytes;
 use http::{header, StatusCode};
 use httpdate::HttpDate;
-use pkarr::errors::{ConcurrencyError, PublishError};
-use pkarr::Timestamp;
+use pkarr_client::errors::{ConcurrencyError, PublishError};
+use pkarr_client::Timestamp;
 use tracing::debug;
 
-use pkarr::{PublicKey, DEFAULT_MAXIMUM_TTL, DEFAULT_MINIMUM_TTL};
+use pkarr_client as pkarr;
+use pkarr_client::{PublicKey, DEFAULT_MAXIMUM_TTL, DEFAULT_MINIMUM_TTL};
 
 use crate::error::Error;
 

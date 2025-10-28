@@ -24,7 +24,8 @@ use axum_server::Handle;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing::info;
 
-use pkarr::{extra::lmdb_cache::LmdbCache, Client, Timestamp};
+use pkarr_client as pkarr;
+use pkarr_client::{extra::lmdb_cache::LmdbCache, Client, Timestamp};
 use url::Url;
 
 use config::{Config, CACHE_DIR};

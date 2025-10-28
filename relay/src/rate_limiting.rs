@@ -11,6 +11,8 @@ use tower_governor::{
 
 pub use tower_governor::GovernorLayer;
 
+use pkarr_client as pkarr;
+
 #[derive(Serialize, Deserialize, Debug)]
 /// Configurations for rate limitng.
 pub struct RateLimiterConfig {

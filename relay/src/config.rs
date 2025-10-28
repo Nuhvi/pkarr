@@ -7,6 +7,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use pkarr_client as pkarr;
+
 pub const DEFAULT_CACHE_SIZE: usize = 1_000_000;
 pub const CACHE_DIR: &str = "pkarr-cache";
 

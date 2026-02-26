@@ -58,7 +58,7 @@ jobs:
     - name: Install Nextest if not cached
       run: |
         if [ ! -f ~/.cargo/bin/cargo-nextest ]; then
-          cargo install cargo-nextest
+          cargo install --locked cargo-nextest
         fi
 
     - name: Check no default features

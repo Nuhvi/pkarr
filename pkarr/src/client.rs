@@ -63,6 +63,44 @@ pub struct Client(pub(crate) Arc<Inner>);
 
 impl Client {
     pub(crate) fn new(config: Config) -> Result<Client, BuildError> {
+        cross_debug!("Starting Pkarr Client {:?}", config);
+
+        #[cfg(dht)]
+        let dht = if let Some(ref builder) = config.dht {
+            Some(builder.build().map_err(BuildError::DhtBuildError)?)
+        } else {
+            None
+        };
+        #[cfg(not(dht))]
+        let dht: Option<()> = None;
+
+        Self::new_with_dht(config, dht)
+    }
+
+    #[cfg(dht)]
+    pub(crate) async fn new_async(config: Config) -> Result<Client, BuildError> {
+        cross_debug!("Starting Pkarr Client {:?}", config);
+
+        let dht = if let Some(b) = &config.dht {
+            Some(
+                b.build_async()
+                    .await
+                    .map_err(BuildError::DhtBuildError)?
+                    .as_sync()
+                    .clone(),
+            )
+        } else {
+            None
+        };
+
+        Self::new_with_dht(config, dht)
+    }
+
+    fn new_with_dht(
+        config: Config,
+        #[cfg(dht)] dht: Option<Dht>, // replace with actual type
+        #[cfg(not(dht))] dht: Option<()>,
+    ) -> Result<Client, BuildError> {
         let cache = if config.cache_size == 0 {
             None
         } else {
@@ -83,17 +121,6 @@ impl Client {
                 )
             }
         };
-
-        cross_debug!("Starting Pkarr Client {:?}", config);
-
-        #[cfg(dht)]
-        let dht = if let Some(builder) = config.dht {
-            Some(builder.build().map_err(BuildError::DhtBuildError)?)
-        } else {
-            None
-        };
-        #[cfg(not(dht))]
-        let dht: Option<()> = None;
 
         #[cfg(relays)]
         let relays = if let Some(ref relays) = config.relays {

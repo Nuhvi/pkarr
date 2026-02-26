@@ -287,6 +287,14 @@ impl ClientBuilder {
     pub fn build(&self) -> Result<Client, BuildError> {
         Client::new(self.0.clone())
     }
+
+    /// Try building a [Client] with the configuration in this builder.
+    ///
+    /// Unlike [Self::build], this doesn NOT block on dns resolution when using mainline Dht.
+    #[cfg(dht)]
+    pub async fn build_async(&self) -> Result<Client, BuildError> {
+        Client::new_async(self.0.clone()).await
+    }
 }
 
 #[cfg(relays)]

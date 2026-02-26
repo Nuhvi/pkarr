@@ -68,7 +68,10 @@ async fn publish_resolve(#[case] networks: Networks) {
     let testnet = mainline::Testnet::new_async(5).await.unwrap();
     let relay = Relay::run_test(&testnet).await.unwrap();
 
-    let a = builder(&relay, &testnet, networks).build().unwrap();
+    let a = builder(&relay, &testnet, networks)
+        .build_async()
+        .await
+        .unwrap();
 
     let keypair = Keypair::random();
 
@@ -79,7 +82,10 @@ async fn publish_resolve(#[case] networks: Networks) {
 
     a.publish(&signed_packet, None).await.unwrap();
 
-    let b = builder(&relay, &testnet, networks).build().unwrap();
+    let b = builder(&relay, &testnet, networks)
+        .build_async()
+        .await
+        .unwrap();
 
     let resolved = b.resolve(&keypair.public_key()).await.unwrap();
     assert_eq!(resolved.as_bytes(), signed_packet.as_bytes());
@@ -98,7 +104,10 @@ async fn client_send(#[case] networks: Networks) {
     let testnet = mainline::Testnet::new_async(5).await.unwrap();
     let relay = Relay::run_test(&testnet).await.unwrap();
 
-    let a = builder(&relay, &testnet, networks).build().unwrap();
+    let a = builder(&relay, &testnet, networks)
+        .build_async()
+        .await
+        .unwrap();
 
     let keypair = Keypair::random();
 
@@ -109,7 +118,10 @@ async fn client_send(#[case] networks: Networks) {
 
     a.publish(&signed_packet, None).await.unwrap();
 
-    let b = builder(&relay, &testnet, networks).build().unwrap();
+    let b = builder(&relay, &testnet, networks)
+        .build_async()
+        .await
+        .unwrap();
 
     tokio::spawn(async move {
         let resolved = b.resolve(&keypair.public_key()).await.unwrap();
@@ -196,7 +208,10 @@ async fn not_found(#[case] networks: Networks) {
     let testnet = mainline::Testnet::new_async(5).await.unwrap();
     let relay = Relay::run_test(&testnet).await.unwrap();
 
-    let client = builder(&relay, &testnet, networks).build().unwrap();
+    let client = builder(&relay, &testnet, networks)
+        .build_async()
+        .await
+        .unwrap();
 
     let keypair = Keypair::random();
 
@@ -222,7 +237,10 @@ async fn repeated_publish_query(#[case] networks: Networks) {
     let testnet = mainline::Testnet::new_async(5).await.unwrap();
     let relay = Relay::run_test(&testnet).await.unwrap();
 
-    let client = builder(&relay, &testnet, networks).build().unwrap();
+    let client = builder(&relay, &testnet, networks)
+        .build_async()
+        .await
+        .unwrap();
 
     let keypair = Keypair::random();
     let signed_packet = SignedPacket::builder()
@@ -244,8 +262,14 @@ async fn concurrent_resolve(#[case] networks: Networks) {
     let testnet = mainline::Testnet::new_async(5).await.unwrap();
     let relay = Relay::run_test(&testnet).await.unwrap();
 
-    let a = builder(&relay, &testnet, networks).build().unwrap();
-    let b = builder(&relay, &testnet, networks).build().unwrap();
+    let a = builder(&relay, &testnet, networks)
+        .build_async()
+        .await
+        .unwrap();
+    let b = builder(&relay, &testnet, networks)
+        .build_async()
+        .await
+        .unwrap();
 
     let keypair = Keypair::random();
     let signed_packet = SignedPacket::builder()
@@ -275,7 +299,10 @@ async fn concurrent_publish_same_packet(#[case] networks: Networks) {
     let testnet = mainline::Testnet::new_async(5).await.unwrap();
     let relay = Relay::run_test(&testnet).await.unwrap();
 
-    let client = builder(&relay, &testnet, networks).build().unwrap();
+    let client = builder(&relay, &testnet, networks)
+        .build_async()
+        .await
+        .unwrap();
 
     let keypair = Keypair::random();
     let signed_packet = SignedPacket::builder()
@@ -308,7 +335,10 @@ async fn concurrent_publish_of_different_packets(#[case] networks: Networks) {
     let testnet = mainline::Testnet::new_async(5).await.unwrap();
     let relay = Relay::run_test(&testnet).await.unwrap();
 
-    let client = builder(&relay, &testnet, networks).build().unwrap();
+    let client = builder(&relay, &testnet, networks)
+        .build_async()
+        .await
+        .unwrap();
 
     let mut handles = vec![];
 
@@ -360,7 +390,10 @@ async fn concurrent_publish_different_with_cas(#[case] networks: Networks) {
 
     let relay = Relay::run_test(&testnet).await.unwrap();
 
-    let client = builder(&relay, &testnet, networks).build().unwrap();
+    let client = builder(&relay, &testnet, networks)
+        .build_async()
+        .await
+        .unwrap();
 
     let keypair = Keypair::random();
 
@@ -402,7 +435,10 @@ async fn conflict_302(#[case] networks: Networks) {
     let testnet = mainline::Testnet::new_async(10).await.unwrap();
     let relay = Relay::run_test(&testnet).await.unwrap();
 
-    let client = builder(&relay, &testnet, networks).build().unwrap();
+    let client = builder(&relay, &testnet, networks)
+        .build_async()
+        .await
+        .unwrap();
 
     let keypair = Keypair::random();
 
@@ -444,7 +480,10 @@ async fn conflict_301_cas(#[case] networks: Networks) {
     let testnet = mainline::Testnet::new_async(5).await.unwrap();
     let relay = Relay::run_test(&testnet).await.unwrap();
 
-    let client = builder(&relay, &testnet, networks).build().unwrap();
+    let client = builder(&relay, &testnet, networks)
+        .build_async()
+        .await
+        .unwrap();
 
     let keypair = Keypair::random();
 
@@ -529,7 +568,10 @@ fn no_tokio(#[case] networks: Networks) {
         })
         .await;
 
-        let a = builder(&relay, &testnet, networks).build().unwrap();
+        let a = builder(&relay, &testnet, networks)
+            .build_async()
+            .await
+            .unwrap();
 
         let keypair = Keypair::random();
 
@@ -540,7 +582,10 @@ fn no_tokio(#[case] networks: Networks) {
 
         a.publish(&signed_packet, None).await.unwrap();
 
-        let b = builder(&relay, &testnet, networks).build().unwrap();
+        let b = builder(&relay, &testnet, networks)
+            .build_async()
+            .await
+            .unwrap();
 
         let resolved = b.resolve(&keypair.public_key()).await.unwrap();
         assert_eq!(resolved.as_bytes(), signed_packet.as_bytes());
@@ -560,7 +605,10 @@ async fn zero_cache_size(#[case] networks: Networks) {
     let testnet = mainline::Testnet::new_async(5).await.unwrap();
     let relay = Relay::run_test(&testnet).await.unwrap();
 
-    let a = builder(&relay, &testnet, networks).build().unwrap();
+    let a = builder(&relay, &testnet, networks)
+        .build_async()
+        .await
+        .unwrap();
 
     let keypair = Keypair::random();
 
@@ -585,7 +633,7 @@ async fn zero_cache_size(#[case] networks: Networks) {
 //     let testnet = mainline::Testnet::new_async(5).await.unwrap();
 //     let relay = Relay::run_test(&testnet).await.unwrap();
 //
-//     let client = builder(&relay, &testnet, networks).build().unwrap();
+//     let client = builder(&relay, &testnet, networks).build_async().await.unwrap();
 //
 //     let keypair = Keypair::random();
 //
@@ -615,7 +663,10 @@ async fn publish_resolve_most_recent_with_no_cache(#[case] networks: Networks) {
     let testnet = mainline::Testnet::new_async(5).await.unwrap();
     let relay = Relay::run_test(&testnet).await.unwrap();
 
-    let a = builder(&relay, &testnet, networks).build().unwrap();
+    let a = builder(&relay, &testnet, networks)
+        .build_async()
+        .await
+        .unwrap();
 
     let keypair = Keypair::random();
 
@@ -650,7 +701,10 @@ async fn regression_relay_cas(#[case] networks: Networks) {
         .sign(&keypair)
         .unwrap();
 
-    let client = builder(&relay, &testnet, networks).build().unwrap();
+    let client = builder(&relay, &testnet, networks)
+        .build_async()
+        .await
+        .unwrap();
 
     client.publish(&signed_packet, None).await.unwrap();
 
@@ -795,7 +849,10 @@ mod reqwest_builder {
             let listener = TcpListener::bind("127.0.0.1:0").unwrap(); // Bind to any available port
             let address = listener.local_addr().unwrap();
 
-            let client = builder(&relay, &testnet, networks).build().unwrap();
+            let client = builder(&relay, &testnet, networks)
+                .build_async()
+                .await
+                .unwrap();
             publish_server_pkarr(&client, &keypair, &address).await;
 
             println!("Server running on https://{}", keypair.public_key());
@@ -809,7 +866,10 @@ mod reqwest_builder {
         }
 
         // Client setup
-        let pkarr_client = builder(&relay, &testnet, networks).build().unwrap();
+        let pkarr_client = builder(&relay, &testnet, networks)
+            .build_async()
+            .await
+            .unwrap();
         let reqwest = reqwest::ClientBuilder::from(pkarr_client).build().unwrap();
 
         // Make a request

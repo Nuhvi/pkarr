@@ -8,6 +8,10 @@ All notable changes to pkarr will be documented in this file.
 
 - Added `ClientBuilder::build_async()` that doesn't block async runtime on dns queries while bootstrapping the dht.
 
+### Fixed
+
+- Internal `SelectFuture::process_result()` checks avoid never resolving.
+
 ## [4.0.0](https://github.com/Nuhvi/pkarr/releases/tag/pkarr-client-v4.0.0)
 
 ### Changed

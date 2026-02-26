@@ -36,6 +36,7 @@ impl SelectFuture {
         &mut self,
         network: Network,
         result: Result<(), PublishError>,
+        cx: &mut Context<'_>,
     ) -> Poll<Result<(), PublishError>> {
         match self.first_result {
             // We already have a success, ignore CAS failures
@@ -49,7 +50,22 @@ impl SelectFuture {
             None => {
                 self.first_result = Some((network, result));
 
-                Poll::Pending
+                match network {
+                    Network::Dht => {
+                        if let Poll::Ready(relay_result) = self.relays_future.as_mut().poll(cx) {
+                            self.process_result(Network::Relays, relay_result, cx)
+                        } else {
+                            Poll::Pending
+                        }
+                    }
+                    Network::Relays => {
+                        if let Poll::Ready(relay_result) = self.dht_future.as_mut().poll(cx) {
+                            self.process_result(Network::Dht, relay_result, cx)
+                        } else {
+                            Poll::Pending
+                        }
+                    }
+                }
             }
         }
     }
@@ -66,14 +82,14 @@ impl Future for SelectFuture {
         // Poll DHT future if not completed yet
         if !matches!(done_network, Some(Network::Dht)) {
             if let Poll::Ready(result) = this.dht_future.as_mut().poll(cx) {
-                return this.process_result(Network::Dht, result);
+                return this.process_result(Network::Dht, result, cx);
             }
         }
 
         // Poll Relays future if not completed yet
         if !matches!(done_network, Some(Network::Relays)) {
             if let Poll::Ready(result) = this.relays_future.as_mut().poll(cx) {
-                return this.process_result(Network::Relays, result);
+                return this.process_result(Network::Relays, result, cx);
             }
         }
 

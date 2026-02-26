@@ -7,7 +7,7 @@ use clap::{Parser, ValueEnum};
 use std::time::Instant;
 use tracing_subscriber;
 
-use pkarr::{Client, PublicKey};
+use pkarr_client::{Client, PublicKey};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]

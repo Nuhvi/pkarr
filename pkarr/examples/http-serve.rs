@@ -14,7 +14,7 @@ use std::sync::Arc;
 
 use clap::Parser;
 
-use pkarr::{dns::rdata::SVCB, Client, Keypair, SignedPacket};
+use pkarr_client::{dns::rdata::SVCB, Client, Keypair, SignedPacket};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]

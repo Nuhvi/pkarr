@@ -17,7 +17,7 @@ cargo install pkarr-relay
 pkarr-relay --config=./config.toml
 ```
 
-You can find an example configuration file [here](https://github.com/pubky/pkarr/blob/main/relay/src/config.example.toml).
+You can find an example configuration file [here](https://github.com/nuhvi/pkarr/blob/main/relay/src/config.example.toml).
 
 #### With Custom Logging
 ```bash

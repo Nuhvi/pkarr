@@ -10,7 +10,7 @@ use clap::{Parser, ValueEnum};
 use std::time::Instant;
 use tracing_subscriber;
 
-use pkarr::{Client, Keypair, SignedPacket};
+use pkarr_client::{Client, Keypair, SignedPacket};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]

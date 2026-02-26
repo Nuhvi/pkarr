@@ -728,7 +728,7 @@ async fn regression_relay_timeout_stack_overflow() {
     let host: crate::dns::Name = "example.com".try_into().unwrap();
     let svcb = SVCB::new(0, host);
     let signed_packet_builder =
-        SignedPacket::builder().https("_pubky".try_into().unwrap(), svcb.clone(), 60 * 60);
+        SignedPacket::builder().https("_service".try_into().unwrap(), svcb.clone(), 60 * 60);
 
     let client = Client::builder()
         .no_dht()
@@ -741,7 +741,7 @@ async fn regression_relay_timeout_stack_overflow() {
         .resolve_most_recent(&Keypair::random().public_key())
         .await;
 
-    // 2) build a new `_pubky` packet
+    // 2) build a new `_service` packet
     let kp = Keypair::random();
     let pkt = signed_packet_builder.clone().sign(&kp).unwrap();
 

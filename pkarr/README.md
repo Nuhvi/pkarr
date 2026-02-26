@@ -1,11 +1,11 @@
 # Pkarr
 
-Rust implementation of [Pkarr](https://pkarr.org) for publishing and resolving DNS packets over [Mainline DHT](https://github.com/Pubky/mainline).
+Rust implementation of [Pkarr](https://pkarr.org) for publishing and resolving DNS packets over [Mainline DHT](https://github.com/nuhvi/mainline).
 
 ## Documentation
 
 - **[API Documentation](https://docs.rs/pkarr/latest/pkarr/)**
-- **[Examples](https://github.com/Pubky/pkarr/tree/main/pkarr/examples)**
+- **[Examples](https://github.com/nuhvi/pkarr/tree/main/pkarr/examples)**
 
 ## Features
 

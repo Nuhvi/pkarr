@@ -16,6 +16,8 @@ pub mod blocking;
 pub mod builder;
 #[cfg(all(dht, relays))]
 mod futures;
+#[cfg(feature = "relays")]
+pub mod http;
 #[cfg(relays)]
 mod relays;
 
@@ -38,6 +40,8 @@ use crate::mainline::{self, errors::PutMutableError, Dht};
 
 use builder::{ClientBuilder, Config};
 
+#[cfg(all(relays, feature = "default-http-client"))]
+use crate::client::http::default_http_client;
 #[cfg(relays)]
 use crate::client::relays::RelaysClient;
 use crate::{Cache, CacheKey, InMemoryCache};
@@ -101,8 +105,21 @@ impl Client {
                 return Err(BuildError::EmptyListOfRelays);
             }
 
-            let relays_client =
-                RelaysClient::new(relays.clone().into_boxed_slice(), config.request_timeout);
+            #[cfg(feature = "default-http-client")]
+            let http_client = config
+                .http_client
+                .unwrap_or_else(|| Arc::new(default_http_client()));
+
+            #[cfg(not(feature = "default-http-client"))]
+            let http_client = config
+                .http_client
+                .ok_or_else(|| BuildError::MissingHttpClient)?;
+
+            let relays_client = RelaysClient::new(
+                relays.clone().into_boxed_slice(),
+                http_client,
+                config.request_timeout,
+            );
 
             Some(relays_client)
         } else {
@@ -558,6 +575,11 @@ pub enum BuildError {
     #[error("Passed an empty list of relays")]
     /// Passed an empty list of relays
     EmptyListOfRelays,
+
+    #[cfg(all(relays, not(feature = "default-http-client")))]
+    #[error("No HTTP client provided. Either enable the `default-http-client` feature or provide your own HttpClient.")]
+    /// No HTTP client provided when default-http-client feature is not enabled.
+    MissingHttpClient,
 }
 
 #[derive(thiserror::Error, Debug, Clone, PartialEq, Eq, Hash)]

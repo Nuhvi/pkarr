@@ -35,6 +35,10 @@ pub use client::builder::DEFAULT_REQUEST_TIMEOUT;
 pub use client::blocking::ClientBlocking;
 #[cfg(client)]
 pub use client::cache::{Cache, CacheKey, InMemoryCache};
+#[cfg(feature = "default-http-client")]
+pub use client::http::{default_http_client, ReqwestClient};
+#[cfg(feature = "relays")]
+pub use client::http::{HttpClient, HttpError, HttpResponse};
 #[cfg(client)]
 pub use client::{builder::ClientBuilder, Client};
 #[cfg(feature = "keys")]

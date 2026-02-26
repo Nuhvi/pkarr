@@ -6,6 +6,8 @@ use std::time::Duration;
 #[cfg(feature = "relays")]
 use url::Url;
 
+#[cfg(feature = "relays")]
+use crate::client::http::HttpClient;
 #[cfg(dht)]
 use crate::mainline;
 use crate::{errors::BuildError, Client};
@@ -43,6 +45,10 @@ pub(crate) struct Config {
     #[cfg(feature = "relays")]
     pub relays: Option<Vec<Url>>,
 
+    /// Custom HTTP client for relay requests.
+    #[cfg(feature = "relays")]
+    pub http_client: Option<Arc<dyn HttpClient>>,
+
     /// Timeout for Relays requests (The Dht uses an adaptive timeout based on observed RTTs).
     ///
     /// The longer this timeout the longer resolve queries will take before consider failed.
@@ -76,6 +82,9 @@ impl Default for Config {
                     .collect(),
             ),
 
+            #[cfg(feature = "relays")]
+            http_client: None,
+
             #[cfg(relays)]
             request_timeout: DEFAULT_REQUEST_TIMEOUT,
 
@@ -108,6 +117,9 @@ impl std::fmt::Debug for Config {
 
         #[cfg(feature = "relays")]
         debug_struct.field("request_timeout", &self.request_timeout);
+
+        #[cfg(feature = "relays")]
+        debug_struct.field("http_client", &self.http_client.is_some());
 
         debug_struct.finish()
     }
@@ -196,11 +208,17 @@ impl ClientBuilder {
     ///
     /// If you want to disable relays use [Self::no_relays] instead.
     #[cfg(feature = "relays")]
-    pub fn relays<T: reqwest::IntoUrl + Clone>(
-        &mut self,
-        relays: &[T],
-    ) -> Result<&mut Self, InvalidRelayUrl> {
-        self.0.relays = Some(into_urls(relays)?);
+    pub fn relays<T: AsRef<str>>(&mut self, relays: &[T]) -> Result<&mut Self, InvalidRelayUrl> {
+        let urls: Result<Vec<Url>, _> = relays.iter().map(|s| Url::parse(s.as_ref())).collect();
+
+        let urls = urls.map_err(InvalidRelayUrl::Parse)?;
+
+        for url in &urls {
+            if url.scheme() != "http" && url.scheme() != "https" {
+                return Err(InvalidRelayUrl::NotHttp(url.to_string()));
+            }
+        }
+        self.0.relays = Some(urls);
 
         Ok(self)
     }
@@ -209,12 +227,22 @@ impl ClientBuilder {
     /// Extend the current [Self::relays] with extra relays.
     ///
     /// If you want to set (override) relays instead, use [Self::relays]
-    pub fn extra_relays<T: reqwest::IntoUrl + Clone>(
+    pub fn extra_relays<T: AsRef<str>>(
         &mut self,
         relays: &[T],
     ) -> Result<&mut Self, InvalidRelayUrl> {
+        let urls: Result<Vec<Url>, _> = relays.iter().map(|s| Url::parse(s.as_ref())).collect();
+
+        let urls = urls.map_err(InvalidRelayUrl::Parse)?;
+
+        for url in &urls {
+            if url.scheme() != "http" && url.scheme() != "https" {
+                return Err(InvalidRelayUrl::NotHttp(url.to_string()));
+            }
+        }
+
         if let Some(ref mut existing) = self.0.relays {
-            for relay in into_urls(relays)? {
+            for relay in urls {
                 if !existing.contains(&relay) {
                     existing.push(relay)
                 }
@@ -271,6 +299,19 @@ impl ClientBuilder {
         self
     }
 
+    /// Set a custom HTTP client for relay requests.
+    ///
+    /// This allows you to use a different HTTP client implementation,
+    /// such as a custom configured reqwest client, or a different HTTP library.
+    ///
+    /// By default, a reqwest client with default settings is used.
+    #[cfg(feature = "relays")]
+    pub fn http_client(&mut self, http_client: impl HttpClient + 'static) -> &mut Self {
+        self.0.http_client = Some(Arc::new(http_client));
+
+        self
+    }
+
     #[cfg(feature = "endpoints")]
     /// Sets the maximum depth of recursion in [Endpoints](https://pkarr.org/endpoints) resolution.
     ///
@@ -290,29 +331,12 @@ impl ClientBuilder {
 }
 
 #[cfg(relays)]
-fn into_urls<T: reqwest::IntoUrl + Clone>(relays: &[T]) -> Result<Vec<Url>, InvalidRelayUrl> {
-    relays
-        .iter()
-        .map(|url| match url.clone().into_url() {
-            Err(e) => Err(InvalidRelayUrl::Parse(e)),
-            Ok(url) => {
-                if url.scheme() != "http" && url.scheme() != "https" {
-                    Err(InvalidRelayUrl::NotHttp(url.to_string()))
-                } else {
-                    Ok(url)
-                }
-            }
-        })
-        .collect::<Result<Vec<Url>, InvalidRelayUrl>>()
-}
-
-#[cfg(relays)]
 #[derive(thiserror::Error, Debug)]
 /// Errors occurring during building a [Client]
 pub enum InvalidRelayUrl {
     #[error("Failed to parse into a Url: {0}")]
     /// Failed to parse into a Url.
-    Parse(reqwest::Error),
+    Parse(url::ParseError),
 
     #[error("Relays Urls should have `http` or `https`: {0}")]
     /// Relays Urls should have `http` or `https`.

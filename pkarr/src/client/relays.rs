@@ -11,13 +11,9 @@ use futures_buffered::FuturesUnorderedBounded;
 use futures_lite::Stream;
 use futures_lite::StreamExt;
 use ntimestamp::Timestamp;
-use reqwest::Method;
 use url::Url;
 
-use reqwest::{
-    header::{self, HeaderValue},
-    Client, StatusCode,
-};
+use crate::client::http::{HttpClient, HttpError};
 
 use super::{ConcurrencyError, PublishError, QueryError};
 use crate::{PublicKey, SignedPacket};
@@ -25,7 +21,7 @@ use crate::{PublicKey, SignedPacket};
 #[derive(Clone)]
 pub struct RelaysClient {
     relays: Box<[Url]>,
-    http_client: Client,
+    http_client: Arc<dyn HttpClient>,
     timeout: Duration,
     pub(crate) inflight_publish: InflightPublishRequests,
 }
@@ -49,15 +45,12 @@ impl Debug for RelaysClient {
 }
 
 impl RelaysClient {
-    pub fn new(relays: Box<[Url]>, timeout: Duration) -> Self {
+    pub fn new(relays: Box<[Url]>, http_client: Arc<dyn HttpClient>, timeout: Duration) -> Self {
         let inflight_publish = InflightPublishRequests::new(relays.len());
 
         Self {
             relays,
-            http_client: Client::builder()
-                .build()
-                .expect("Client building should be infallible"),
-
+            http_client,
             timeout,
             inflight_publish,
         }
@@ -93,7 +86,7 @@ impl RelaysClient {
             futures.push(async move {
                 let result = publish_to_relay(http_client, relay, &public_key, body, cas, timeout)
                     .await
-                    .map_err(map_reqwest_error);
+                    .map_err(map_http_error);
 
                 inflight.add_result(&public_key, result)
             });
@@ -188,7 +181,6 @@ impl InflightPublishRequests {
 
         if let Some(inflight_request) = requests.get_mut(public_key) {
             if signed_packet.signature() == inflight_request.signed_packet.signature() {
-                // No-op, the inflight query is sufficient.
             } else if !signed_packet.more_recent_than(&inflight_request.signed_packet) {
                 return Err(ConcurrencyError::NotMostRecent)?;
             } else if let Some(cas) = cas {
@@ -230,7 +222,6 @@ impl InflightPublishRequests {
         }
     }
 
-    /// Returns true if request is done.
     fn add_success(&self, public_key: &PublicKey) -> Result<bool, PublishError> {
         let mut inflight = self.requests.lock().expect("InflightPublishRequests lock");
 
@@ -251,7 +242,6 @@ impl InflightPublishRequests {
         }
     }
 
-    /// Returns true if request is done.
     fn add_error(
         &mut self,
         public_key: &PublicKey,
@@ -262,7 +252,6 @@ impl InflightPublishRequests {
         if let Some(request) = inflight.get_mut(public_key) {
             let majority = self.relays_count / 2 + self.relays_count % 2;
 
-            // Add error, and return early error if necessary.
             {
                 let count = request.errors.get(&error).unwrap_or(&0) + 1;
 
@@ -313,39 +302,37 @@ impl InflightPublishRequests {
 }
 
 pub async fn publish_to_relay(
-    http_client: reqwest::Client,
+    http_client: Arc<dyn HttpClient>,
     relay: Url,
     public_key: &PublicKey,
     body: Bytes,
     cas: Option<String>,
     timeout: Duration,
-) -> Result<(), reqwest::Error> {
+) -> Result<(), HttpError> {
     let url = format_url(&relay, public_key);
 
-    let mut request = http_client.put(url.clone());
-
-    request = request
-        // Publish combines the http latency with the PUT query to the dht
-        // on the relay side, so we should be as generous as possible
-        .timeout(timeout * 3);
-
-    if let Some(cas) = cas {
-        request = request.header(header::IF_MATCH, cas);
+    let mut headers: Vec<(&str, &str)> = Vec::new();
+    if let Some(ref cas) = cas {
+        headers.push(("if-match", cas.as_str()));
     }
 
-    let response = request.body(body).send().await.inspect_err(|error| {
-        cross_debug!("PUT {:?}", error);
-    })?;
+    let response = http_client
+        .put(url.clone(), timeout * 3, &headers, body)
+        .await?;
 
-    let status = response.status();
+    let status = response.status;
 
-    if let Err(error) = response.error_for_status_ref() {
-        let text = response.text().await.unwrap_or("".to_string());
+    if !(200..300).contains(&status) {
+        let text = String::from_utf8_lossy(&response.body);
 
         cross_debug!("Got error response for PUT {url} {status} {text}");
 
-        return Err(error);
-    };
+        return Err(HttpError {
+            message: format!("HTTP error {status}: {text}"),
+            is_timeout: false,
+            status: Some(status),
+        });
+    }
 
     if status.is_success() {
         cross_debug!("Successfully published to {url}");
@@ -356,27 +343,15 @@ pub async fn publish_to_relay(
     Ok(())
 }
 
-fn map_reqwest_error(error: reqwest::Error) -> PublishError {
-    if error.is_timeout() {
+fn map_http_error(error: HttpError) -> PublishError {
+    if error.is_timeout {
         PublishError::Query(QueryError::Timeout)
-    } else if error.is_status() {
-        match error
-            .status()
-            .expect("previously verified that it is a status error")
-        {
-            StatusCode::BAD_REQUEST => {
-                // This should be very unlikely unless relays are misbehaving, still worth
-                // returning to the user to know that relays are misbehaving, and not just a
-                // network issue.
-                PublishError::Query(QueryError::BadRequest)
-            }
-            StatusCode::CONFLICT => PublishError::Concurrency(ConcurrencyError::NotMostRecent),
-            StatusCode::PRECONDITION_FAILED => {
-                PublishError::Concurrency(ConcurrencyError::CasFailed)
-            }
-            StatusCode::PRECONDITION_REQUIRED => {
-                PublishError::Concurrency(ConcurrencyError::ConflictRisk)
-            }
+    } else if let Some(status) = error.status {
+        match status {
+            400 => PublishError::Query(QueryError::BadRequest),
+            409 => PublishError::Concurrency(ConcurrencyError::NotMostRecent),
+            412 => PublishError::Concurrency(ConcurrencyError::CasFailed),
+            428 => PublishError::Concurrency(ConcurrencyError::ConflictRisk),
             _ => PublishError::UnexpectedResponses,
         }
     } else {
@@ -399,7 +374,7 @@ pub fn format_url(relay: &Url, public_key: &PublicKey) -> Url {
 }
 
 pub async fn resolve_from_relay(
-    http_client: reqwest::Client,
+    http_client: Arc<dyn HttpClient>,
     relay: Url,
     public_key: PublicKey,
     if_modified_since: Option<String>,
@@ -407,68 +382,63 @@ pub async fn resolve_from_relay(
 ) -> Option<SignedPacket> {
     let url = format_url(&relay, &public_key);
 
-    let mut request = reqwest::Request::new(Method::GET, url.clone());
-
-    *request.timeout_mut() = Some(timeout);
-
+    let mut headers = Vec::new();
     if let Some(ref httpdate) = if_modified_since {
-        request.headers_mut().insert(
-            header::IF_MODIFIED_SINCE,
-            HeaderValue::from_str(httpdate).expect("httpdate to be valid header value"),
-        );
+        headers.push(("if-modified-since", httpdate.as_str()));
     }
 
-    let response = loop {
-        let response = match http_client
-            .execute(request.try_clone().expect("infallible"))
-            .await
-        {
-            Ok(response) => response,
-            Err(error) => {
-                cross_debug!("GET {:?}", error);
-
-                return None;
-            }
-        };
-
-        let status = response.status();
-
-        if response.error_for_status_ref().is_err() {
-            let text = response.text().await.unwrap_or("".to_string());
-
-            cross_debug!("Got error response for GET {url} {status} {text}");
+    let mut response = match http_client.get(url.clone(), timeout, &headers).await {
+        Ok(response) => response,
+        Err(error) => {
+            cross_debug!("GET {:?}", error);
 
             return None;
-        };
-
-        if should_retry_with_cache_disabled(
-            &mut request,
-            &if_modified_since,
-            &status,
-            response.content_length(),
-        ) {
-            continue;
-        } else {
-            break response;
         }
     };
 
-    if response.content_length().unwrap_or_default() > SignedPacket::MAX_BYTES {
+    let status = response.status;
+
+    if !(200..300).contains(&status) {
+        let text = String::from_utf8_lossy(&response.body);
+
+        cross_debug!("Got error response for GET {url} {status} {text}");
+
+        return None;
+    };
+
+    if status == 304 && if_modified_since.is_none() {
+        let headers = vec![("cache-control", "no-cache, no-store, must-revalidate")];
+        match http_client.get(url.clone(), timeout, &headers).await {
+            Ok(resp) => {
+                response = resp;
+            }
+            Err(error) => {
+                cross_debug!("GET with no-cache {:?}", error);
+                return None;
+            }
+        }
+    }
+
+    if status == 200 && response.body.is_empty() {
+        let headers = vec![("cache-control", "no-cache, no-store, must-revalidate")];
+        match http_client.get(url.clone(), timeout, &headers).await {
+            Ok(resp) => {
+                response = resp;
+            }
+            Err(error) => {
+                cross_debug!("GET with no-cache {:?}", error);
+                return None;
+            }
+        }
+    }
+
+    if response.body.len() as u64 > SignedPacket::MAX_BYTES {
         cross_debug!("Response too large for GET {url}");
 
         return None;
     }
 
-    let payload = match response.bytes().await {
-        Ok(payload) => payload,
-        Err(error) => {
-            cross_debug!("Failed to read relay response from GET {url} {error}");
-
-            return None;
-        }
-    };
-
-    match SignedPacket::from_relay_payload(&public_key, &payload) {
+    match SignedPacket::from_relay_payload(&public_key, &response.body) {
         Ok(signed_packet) => Some(signed_packet),
         Err(error) => {
             cross_debug!("Invalid signed_packet {url}:{error}");
@@ -478,34 +448,12 @@ pub async fn resolve_from_relay(
     }
 }
 
-fn should_retry_with_cache_disabled(
-    request: &mut reqwest::Request,
-    if_modified_since: &Option<String>,
-    status: &StatusCode,
-    content_length: Option<u64>,
-) -> bool {
-    // We got a 304 not modified, even though we don't have any packet in cache.
-    let unexpected_not_modified =
-        (*status == StatusCode::NOT_MODIFIED) && if_modified_since.is_none();
+trait HttpStatusExt {
+    fn is_success(&self) -> bool;
+}
 
-    // We got a success response, but the packet is empty.
-    let broken_cache = status.is_success() && (content_length.unwrap_or_default() == 0);
-
-    let needs_retry_with_cache_disabled = unexpected_not_modified || broken_cache;
-
-    let havent_retried_with_cache_disabled_already =
-        request.headers().get(header::CACHE_CONTROL).is_none();
-
-    if needs_retry_with_cache_disabled && havent_retried_with_cache_disabled_already {
-        request.headers_mut().insert(
-            header::CACHE_CONTROL,
-            "no-cache, no-store, must-revalidate"
-                .try_into()
-                .expect("cache control is valid http header value"),
-        );
-
-        return true;
+impl HttpStatusExt for u16 {
+    fn is_success(&self) -> bool {
+        (200..300).contains(self)
     }
-
-    false
 }

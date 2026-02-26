@@ -47,9 +47,11 @@ tracing = { version = "0.1.41", optional = true }
 dht = { workspace = true, optional = true }
 
 # feat: relay dependencies
-reqwest = { workspace = true, optional = true }
 tokio = { version = "1.43.0", default-features = false, optional = true }
 async-compat = { version = "0.2.4", optional = true }
+
+# feat: default http client (reqwest)
+reqwest = { workspace = true, optional = true }
 
 # feat: lmdb-cache defendencies
 heed = { version = "0.21.0", default-features = false, optional = true }
@@ -103,7 +105,7 @@ signed_packet = ["keys", "dep:simple-dns", "dep:ntimestamp", "dep:bytes", 'dep:s
 ## Enable the [Client] with [mainline] support.
 dht = ["dep:dht", "__client"]
 ## Enables [Client] with [Relays](https://pkarr.org/relays).
-relays = ["dep:url", "dep:reqwest", "dep:futures-buffered", "__client"]
+relays = ["dep:url", "dep:futures-buffered", "__client"]
 
 # Extra
 ## Use [LmdbCache][extra::lmdb_cache::LmdbCache] implementation. Only available if the `client` module is enabled.
@@ -119,11 +121,15 @@ tls = ["endpoints", "ed25519-dalek/pkcs8", "dep:webpki", "dep:rustls"]
 ## Use [reqwest::dns::Resolve] trait implementation for [Client].
 ##
 ## Only available if the `client` module is enabled.
-reqwest-resolve = ["endpoints", "dep:reqwest"]
+reqwest-resolve = ["endpoints", "default-http-client"]
 ## Create a [reqwest::ClientBuilder] from [Client].
 ##
 ## Only available if the `client` module is enabled.
 reqwest-builder = ["tls", "reqwest-resolve"]
+## Enable the default HTTP client implementation using reqwest.
+##
+## Without this, you must provide your own [`HttpClient`](crate::client::http::HttpClient) implementation.
+default-http-client = ["dep:reqwest"]
 
 # Combinations
 ## Use all features
@@ -135,7 +141,7 @@ extra = ["endpoints", "lmdb-cache", "reqwest-resolve", "tls", "reqwest-builder"]
 ## Use all features including the `full-client` and `extra` features.
 full = ["full-client", "extra"]
 
-default = ["full-client"]
+default = ["full-client", "default-http-client"]
 
 ## Enable client dependencies.
 ##

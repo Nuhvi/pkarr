@@ -497,9 +497,9 @@ dependencies = [
 
 [[package]]
 name = "dht"
-version = "6.4.0"
+version = "6.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf85ef918f33294d98b8833ab7bd095700480b095295b275d36c8fdd86daafdd"
+checksum = "e68882d2d2910e00f55ad53aa8000d5968880587b279db6e12500d04adedd4a6"
 dependencies = [
  "crc",
  "document-features",

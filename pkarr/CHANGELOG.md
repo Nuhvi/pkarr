@@ -2,6 +2,12 @@
 
 All notable changes to pkarr will be documented in this file.
 
+## [4.1.1](https://github.com/Nuhvi/pkarr/compare/pkarr-client-v4.1.0...pkarr-client-v4.1.1) - 2026-02-26
+
+### Fixed
+
+- Updated `dht` crate to `6.4.1`.
+
 ## [4.1.0](https://github.com/Nuhvi/pkarr/compare/pkarr-client-v4.0.0...pkarr-client-v4.1.0) - 2026-02-26
 
 ### Added

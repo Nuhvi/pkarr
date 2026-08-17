@@ -8,7 +8,7 @@ Pkarr uses [z-base32](https://philzimmermann.com/docs/human-oriented-base-32-enc
 
 While a TLD should work with any URI scheme, sometimes printing the encoded public-key alone is lacking context, so it is advisable to add `pk:`;
 ```
-pk:o4dksfbqk85ogzdb5osziw6befigbuxmuxkuxq8434q89uj56uyy`
+pk:o4dksfbqk85ogzdb5osziw6befigbuxmuxkuxq8434q89uj56uyy
 ```
 
 Implementations should be able to parse both `pk:<zbase32 encoded key>`, standalone `<zbase-32 encoded key>`, and preferably any 52 character TLD in any valid URI.
